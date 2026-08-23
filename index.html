@@ -491,8 +491,15 @@
   <div class="row"><div><div class="name" id="storeName">この端末に保存中</div>
     <div class="sub" id="storeSub">投手・球数・設定はこの端末のブラウザにだけ残ります</div></div>
     <button class="pill" id="backup">書き出す</button></div>
+  <div class="grp">リセット</div>
+  <button class="danger" id="rToday">今日をまるごとリセット</button>
+  <button class="danger" id="rWipe">投手をすべて削除する</button>
+  <p class="note">「今日をまるごとリセット」は今日の時刻・スコア・球数・試合番号を消してやり直します。
+    投手の登録と昨日までの記録は残ります。</p>
   <button class="close" id="close">閉じる</button>
-  <p style="text-align:center;font-size:11px;color:var(--soft);margin-top:12px">版：2026-08-23j</p>
+  <p style="text-align:center;font-size:11px;color:var(--soft);margin-top:12px">
+    制作：<a href="https://kreatio-works.github.io/forBaseball_timer/" target="_blank" rel="noopener"
+    style="color:var(--steel);font-weight:700">KREATIO works</a>　／　版：2026-08-23k</p>
 </div>
 
 <!-- pitcher sheet -->
@@ -524,11 +531,8 @@
   <div id="resetArea">
     <div class="grp">次の試合に向けて</div>
     <button class="close" id="rNew" style="background:var(--grass)">新しい試合を始める</button>
-    <button class="danger" id="rToday">今日をまるごとリセット</button>
-    <button class="danger" id="rWipe">投手をすべて削除する</button>
-    <p class="note" id="resetNote">「新しい試合」＝前の試合の記録を保存して次の試合へ（球数は1日の上限のため合算のまま）。
-      「今日をまるごとリセット」＝今日の時刻・スコア・球数・試合番号をすべて消してやり直し
-      （投手の登録と、昨日までの記録は残ります）。</p>
+    <p class="note" id="resetNote">前の試合の記録を保存して、時刻・スコア・イニングを新しくします。
+      球数は1日の上限を数えるため合算のまま。やり直し用のリセットは⚙設定にあります。</p>
   </div>
 </div>
 
@@ -690,7 +694,8 @@ function renderT(){
   else st.textContent=elapsed>0?'一時停止中':'残り時間';
   $('main').textContent=running?'一時停止':(elapsed>0?'再開':'開始');
   $('main').className='main-btn'+(running?' running':((itvDone||itvRunning)?' waiting':''));
-  $('finish').disabled=startAt===null||ended;
+  $('finish').textContent=ended?'新しい試合へ':'試合終了';
+  $('finish').disabled=!ended&&startAt===null;
   $('itv').classList.toggle('on',itvRunning);
   $('itvClock').textContent=fmt(Math.max(0,S.itvMs-itvElapsed));
   $('itvLabel').textContent=itvRunning?'インターバル中':'インターバル';
@@ -1107,6 +1112,7 @@ function summaryText(){
   if(multi&&rows.length)
     out+='\n1日合計： '+rows.map(p=>p.name+' '+dayTotal(p,sumDate)+'球').join(' / ');
   if(!any)out+='\n記録なし';
+  out+='\n――\n⚾野球タイマー by KREATIO works\nhttps://kreatio-works.github.io/forBaseball_timer/';
   return out;
 }
 $('sumPrev').onclick=()=>{const ds=dataDates(),i=ds.indexOf(sumDate);if(i>0){sumDate=ds[i-1];renderSummary();}};
@@ -1146,7 +1152,8 @@ function resetToday(){
 }
 arm($('rToday'),'今日をまるごとリセット',()=>{
   resetToday();
-  renderP();renderS();renderSummary();toast('今日の記録をすべてリセットしました');
+  renderP();renderS();if(sumDate)renderSummary();
+  closeSheets();toast('今日の記録をすべてリセットしました');
 });
 arm($('rWipe'),'投手をすべて削除する',()=>{
   P={list:[],sel:null,inning:1,game:P.game||1,gameDate:P.gameDate||dkey(0),bso:{b:0,s:0,o:0}};
@@ -1242,7 +1249,7 @@ $('itvBtn').onclick=()=>{unlockAudio();itvRunning?endInterval(true):startInterva
 $('frBtn').onclick=()=>{unlockAudio();frRunning?stopFree(true):startFree();};
 $('frReset').onclick=resetFree;
 $('frInfo').onclick=()=>{if(frRunning){toast('停止してから変更できます');return;}openFree();};
-$('finish').onclick=finishGame;
+$('finish').onclick=()=>{endAt!==null?openSummary():finishGame();};
 $('reset').onclick=()=>{
   if(!armed){armed=true;$('reset').classList.add('armed');$('reset').textContent='もう一度でリセット';
     clearTimeout(armTimer);armTimer=setTimeout(()=>{armed=false;$('reset').classList.remove('armed');renderT();},3000);}
