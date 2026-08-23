@@ -139,7 +139,9 @@
          background:var(--card);border:1px solid var(--line);border-radius:11px;padding:6px 10px;
          font-size:12px;font-weight:700;color:var(--soft);letter-spacing:.02em}
   .minit b{font-family:var(--display);font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;margin:0 1px}
-  .minit .mseg{display:flex;align-items:baseline;gap:4px;cursor:pointer;white-space:nowrap}
+  .minit .mseg{display:flex;align-items:baseline;gap:4px;cursor:pointer;white-space:nowrap;
+               padding:5px 7px;margin:-5px -3px;border-radius:8px}
+  .minit .mseg:active{background:#00000010}
   .minit b.clay{color:var(--clay)}
   .minit b.red{color:var(--alert)}
   .minit .msep{color:var(--line)}
@@ -310,7 +312,13 @@
     <button class="gear" id="gear" aria-label="設定">⚙</button>
   </div>
 
-  <div class="minit hide" id="miniT"></div>
+  <div class="minit" id="miniT">
+    <span class="mseg" data-t="timer" id="msTime"><span id="msTimeLab">残り</span><b id="msTimeVal">2:00:00</b></span>
+    <span class="msep" id="msSep1">｜</span>
+    <span class="mseg" data-t="pitch" id="msPitch"><span id="msPitchLab"></span><b id="msPitchVal">0</b>球</span>
+    <span class="msep" id="msSep2">｜</span>
+    <span class="mseg" data-t="score" id="msScore"><b id="msScoreA">0</b>-<b id="msScoreB">0</b></span>
+  </div>
 
   <!-- ================= timer ================= -->
   <div class="view" id="viewTimer">
@@ -498,8 +506,8 @@
     投手の登録と昨日までの記録は残ります。</p>
   <button class="close" id="close">閉じる</button>
   <p style="text-align:center;font-size:11px;color:var(--soft);margin-top:12px">
-    制作：<a href="https://kreatio-works.github.io/forBaseball_timer/" target="_blank" rel="noopener"
-    style="color:var(--steel);font-weight:700">KREATIO works</a>　／　版：2026-08-23k</p>
+    制作：<a href="https://kreatio-works.github.io/" target="_blank" rel="noopener"
+    style="color:var(--steel);font-weight:700">KREATIO works</a>　／　版：2026-08-23m</p>
 </div>
 
 <!-- pitcher sheet -->
@@ -714,27 +722,31 @@ function renderT(){
   $('logEnd').textContent=b||'—:—';$('logEnd').classList.toggle('empty',!b);
   if(!armed)$('reset').textContent='リセット';
 
-  const segs=[];
-  if(curTab!=='timer'){
-    let lab='残り',val=fmt(rem),cls='';
-    if(itvRunning){lab='中断';val=fmt(Math.max(0,S.itvMs-itvElapsed));cls='clay';}
-    else if(over){lab='超過';cls='red';}
-    else if(ended){lab='終了';val=fmt(elapsed);}
-    else if(!running&&elapsed>0)lab='停止中';
-    segs.push('<span class="mseg" data-t="timer">'+lab+'<b class="'+cls+'">'+val+'</b></span>');
+  let lab='残り',val=fmt(rem),cls='';
+  if(itvRunning){lab='中断';val=fmt(Math.max(0,S.itvMs-itvElapsed));cls='clay';}
+  else if(over){lab='超過';cls='red';}
+  else if(ended){lab='終了';val=fmt(elapsed);}
+  else if(!running&&elapsed>0)lab='停止中';
+  $('msTimeLab').textContent=lab;
+  $('msTimeVal').textContent=val;
+  $('msTimeVal').className=cls;
+
+  const pp=pitcher();
+  if(pp){
+    $('msPitchLab').textContent=(pp.team==='opp'?'相手 ':'')+pp.name;
+    $('msPitchVal').textContent=dayTotal(pp,dkey(0));
   }
-  if(curTab!=='pitch'){
-    const pp=pitcher();
-    if(pp)segs.push('<span class="mseg" data-t="pitch">'+(pp.team==='opp'?'相手 ':'')+pp.name
-      +'<b>'+dayTotal(pp,dkey(0))+'</b>球</span>');
-  }
-  if(curTab!=='score'){
-    const gsl2=dayGames(dkey(0)),g2=gsl2.length?gsl2[gsl2.length-1]:null;
-    const ta=g2?scTot(g2.a.r):0,tb=g2?scTot(g2.b.r):0;
-    segs.push('<span class="mseg" data-t="score"><b>'+ta+'</b>-<b>'+tb+'</b></span>');
-  }
-  $('miniT').innerHTML=segs.join('<span class="msep">｜</span>');
-  $('miniT').classList.toggle('hide',segs.length===0);
+  const gsl2=dayGames(dkey(0)),g2=gsl2.length?gsl2[gsl2.length-1]:null;
+  $('msScoreA').textContent=g2?scTot(g2.a.r):0;
+  $('msScoreB').textContent=g2?scTot(g2.b.r):0;
+
+  const showT=curTab!=='timer',showP=curTab!=='pitch'&&!!pp,showS=curTab!=='score';
+  $('msTime').classList.toggle('hide',!showT);
+  $('msPitch').classList.toggle('hide',!showP);
+  $('msScore').classList.toggle('hide',!showS);
+  $('msSep1').classList.toggle('hide',!(showT&&(showP||showS)));
+  $('msSep2').classList.toggle('hide',!(showP&&showS));
+  $('miniT').classList.toggle('hide',!showT&&!showP&&!showS);
 }
 
 /* ---------- pitch counter ---------- */
