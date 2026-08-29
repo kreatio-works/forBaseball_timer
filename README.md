@@ -1,19 +1,7 @@
 # 野球タイマー
 
 試合時間・インターバル・フリータイマーと、投手の球数カウンターをまとめた1ファイルのWebアプリです。
-インストール不要で、スマホのブラウザで開くだけで使えます。
-
-## 置きかた（GitHub Pages）
-
-1. GitHubで新しいリポジトリを作る（Publicにする）
-2. 次のファイルをまとめてアップロードする（同じ階層に置く）
-   - `index.html`（アプリ本体）
-   - `manifest.json`
-   - `icon-192.png` / `icon-512.png` / `apple-touch-icon.png` / `favicon.png`（アイコン）
-3. リポジトリの Settings → Pages → Source を「Deploy from a branch」、Branch を `main` / `(root)` にして保存
-4. 1〜2分待つと `https://ユーザー名.github.io/リポジトリ名/` で開けるようになる
-
-このURLをLINEなどで配れば、全員が同じアプリを使えます。
+インストール不要で、スマホのブラウザで開くだけで使えます
 
 ## スマホでの使いかた
 
