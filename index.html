@@ -254,6 +254,9 @@
   .bd span{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--soft);background:var(--card);
            border:1px solid var(--line);border-radius:8px;padding:5px 9px}
   .bd span b{font-family:var(--display);font-size:14px;color:var(--ink);margin-left:5px}
+  .bd span.tap{cursor:pointer}
+  .bd span.tap:active{background:#EFF2EC}
+  .bd span.bdhint{border:none;background:none;color:var(--soft);opacity:.7;padding:5px 2px}
   .empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
          color:var(--soft);font-size:15px;font-weight:600;text-align:center;line-height:1.8}
 
@@ -390,7 +393,7 @@
         <button id="innMinus" aria-label="前のイニング">−</button>
         <div class="inn"><span id="innNo">1</span>回</div>
         <button id="innPlus" aria-label="次のイニング">＋</button>
-        <div class="inncount">このイニング<b id="innCount">0</b>球</div>
+        <div class="inncount" id="innCountBox" style="cursor:pointer">このイニング<b id="innCount">0</b>球</div>
       </div>
       <div class="controls">
         <button class="main-btn" id="plus1">＋1球</button>
@@ -507,7 +510,7 @@
   <button class="close" id="close">閉じる</button>
   <p style="text-align:center;font-size:11px;color:var(--soft);margin-top:12px">
     制作：<a href="https://kreatio-works.github.io/" target="_blank" rel="noopener"
-    style="color:var(--steel);font-weight:700">KREATIO works</a>　／　版：2026-08-23m</p>
+    style="color:var(--steel);font-weight:700">KREATIO works</a>　／　版：2026-09-06a</p>
 </div>
 
 <!-- pitcher sheet -->
@@ -542,6 +545,24 @@
     <p class="note" id="resetNote">前の試合の記録を保存して、時刻・スコア・イニングを新しくします。
       球数は1日の上限を数えるため合算のまま。やり直し用のリセットは⚙設定にあります。</p>
   </div>
+</div>
+
+<!-- inning edit sheet -->
+<div class="sheet" id="isheet">
+  <h2 id="iTitle">球数の修正</h2>
+  <p class="hint">直したい回を ‹ › で選んで、＋−ボタンで球数を修正できます。修正はすぐ保存されます。</p>
+  <div class="datenav" style="margin-top:0">
+    <button class="mini" id="iPrev" aria-label="前の回">‹</button>
+    <div class="d"><span id="iInn" style="font-family:var(--display);font-size:22px">1</span>回</div>
+    <button class="mini" id="iNext" aria-label="次の回">›</button>
+  </div>
+  <div class="innrow" style="justify-content:center;gap:16px;margin-top:10px">
+    <button id="iMinus" aria-label="1球減らす">−</button>
+    <div class="inn" style="min-width:96px"><span id="iCount" style="font-size:34px">0</span><span style="font-size:14px;color:var(--soft)"> 球</span></div>
+    <button id="iPlus" aria-label="1球増やす">＋</button>
+  </div>
+  <p class="note" id="iNote"></p>
+  <button class="close" id="iClose">閉じる</button>
 </div>
 
 <div class="sheet" id="fsheet">
@@ -880,8 +901,15 @@ function renderP(){
   $('innCount').textContent=innNow;
   const bd=$('bd');bd.innerHTML='';
   Object.keys(innMap).map(Number).sort((x,y)=>x-y).forEach(k=>{
-    const sp=document.createElement('span');sp.innerHTML=k+'回<b>'+innMap[k]+'</b>';bd.appendChild(sp);
+    const sp=document.createElement('span');sp.className='tap';
+    sp.innerHTML=k+'回<b>'+innMap[k]+'</b>';
+    sp.onclick=()=>openInnEdit(k);
+    bd.appendChild(sp);
   });
+  if(bd.children.length){
+    const hint=document.createElement('span');hint.className='bdhint';
+    hint.textContent='タップで修正';bd.appendChild(hint);
+  }
   const stop=rem!==null&&rem<=0;
   $('plus1').className='main-btn'+(stop?' stop':'')+(S.bso==='on'?' hide':'');
   $('bsoBox').classList.toggle('hide',S.bso!=='on');
@@ -1172,6 +1200,45 @@ arm($('rWipe'),'投手をすべて削除する',()=>{
   savePitch();renderP();closeSheets();toast('投手をすべて削除しました');
 });
 
+/* イニングの球数修正シート */
+let editInn=1;
+function openInnEdit(n){
+  const p=pitcher();if(!p)return;
+  editInn=n||P.inning;
+  renderInnEdit();
+  $('isheet').classList.add('open');$('veil').classList.add('open');
+}
+function renderInnEdit(){
+  const p=pitcher();if(!p)return;
+  const m=gInnings(p,dkey(0),P.game);
+  $('iTitle').textContent=p.name+' 投手の球数を修正';
+  $('iInn').textContent=editInn;
+  $('iCount').textContent=m[editInn]||0;
+  $('iPrev').disabled=editInn<=1;
+  $('iNext').disabled=editInn>=20;
+  $('iNote').textContent='今日の累計 '+dayTotal(p,dkey(0))+'球'
+    +(P.game>1?'（第'+P.game+'試合の記録を修正しています）':'');
+}
+function bumpInnEdit(delta){
+  const p=pitcher();if(!p)return;
+  checkGameDate();
+  const d=ensureDay(p,dkey(0));
+  while(d.games.length<P.game)d.games.push({innings:{}});
+  const inn=d.games[P.game-1].innings;
+  const cur=inn[editInn]||0;
+  if(delta<0&&cur<=0){toast('0球より減らせません');return;}
+  const next=cur+delta;
+  if(next<=0)delete inn[editInn];else inn[editInn]=next;
+  d.manual=null;
+  savePitch();renderInnEdit();renderP();
+}
+$('iPrev').onclick=()=>{if(editInn>1){editInn--;renderInnEdit();}};
+$('iNext').onclick=()=>{if(editInn<20){editInn++;renderInnEdit();}};
+$('iMinus').onclick=()=>bumpInnEdit(-1);
+$('iPlus').onclick=()=>bumpInnEdit(1);
+$('iClose').onclick=closeSheets;
+$('innCountBox').onclick=()=>openInnEdit(P.inning);
+
 /* pitcher sheet */
 let psTeamVal='own';
 $('psTeam').onclick=e=>{const b=e.target.closest('button');if(!b)return;
@@ -1294,7 +1361,8 @@ document.addEventListener('keydown',e=>{
 
 /* ---------- settings ---------- */
 function closeSheets(){$('sheet').classList.remove('open');$('psheet').classList.remove('open');
-  $('fsheet').classList.remove('open');$('ssheet').classList.remove('open');$('veil').classList.remove('open');}
+  $('fsheet').classList.remove('open');$('ssheet').classList.remove('open');
+  $('isheet').classList.remove('open');$('veil').classList.remove('open');}
 function openFree(){
   $('frM').value=Math.floor(S.freeMs/60000);$('frS').value=Math.floor(S.freeMs%60000/1000);
   markPresets();$('fsheet').classList.add('open');$('veil').classList.add('open');
